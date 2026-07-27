@@ -12,10 +12,52 @@ export default function StudentView({ user }) {
   const [history, setHistory] = useState([]); // {question, answer|null, pending, subject}
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(null);
+  const [toast, setToast] = useState(null);
+  const [hasUnreadMyPage, setHasUnreadMyPage] = useState(false);
+  const [myPageRefreshKey, setMyPageRefreshKey] = useState(0);
 
   useEffect(() => {
     loadInitialData();
   }, []);
+
+  // 내 질문에 선생님이 답변을 등록하면(미답변 → 답변완료) 새로고침 없이 알림
+  useEffect(() => {
+    const channel = supabase
+      .channel(`student-answers-${user.email}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "unanswered_questions",
+          filter: `student_email=eq.${user.email}`,
+        },
+        (payload) => {
+          if (payload.new.status === "answered" && payload.old.status !== "answered") {
+            showToast(`"${payload.new.question}" 질문에 답변이 등록됐어요!`);
+            setHasUnreadMyPage(true);
+            setMyPageRefreshKey((k) => k + 1);
+            loadInitialData(); // 다음 질문 매칭에 새 답변이 반영되도록 Q&A 목록 갱신
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.email]);
+
+  function showToast(message) {
+    setToast(message);
+    setTimeout(() => setToast(null), 4000);
+  }
+
+  function openTab(nextTab) {
+    setTab(nextTab);
+    if (nextTab === "mypage") setHasUnreadMyPage(false);
+  }
 
   async function loadInitialData() {
     const [{ data: qaData, error: qaErr }, { data: subjectData, error: subjectErr }] = await Promise.all([
@@ -88,17 +130,19 @@ export default function StudentView({ user }) {
       </header>
 
       <nav className="tabs">
-        <button className={tab === "ask" ? "active" : ""} onClick={() => setTab("ask")}>
+        <button className={tab === "ask" ? "active" : ""} onClick={() => openTab("ask")}>
           질문하기
         </button>
-        <button className={tab === "mypage" ? "active" : ""} onClick={() => setTab("mypage")}>
-          마이페이지
+        <button className={tab === "mypage" ? "active" : ""} onClick={() => openTab("mypage")}>
+          마이페이지 {hasUnreadMyPage && <span className="dot" />}
         </button>
       </nav>
 
+      {toast && <div className="toast">{toast}</div>}
+
       {tab === "mypage" ? (
         <main className="chat-area">
-          <MyPage user={user} />
+          <MyPage user={user} refreshKey={myPageRefreshKey} />
         </main>
       ) : (
         <>

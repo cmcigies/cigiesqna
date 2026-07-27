@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 
-export default function MyPage({ user }) {
+export default function MyPage({ user, refreshKey }) {
   const [logs, setLogs] = useState([]);
   const [unanswered, setUnanswered] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -9,7 +9,8 @@ export default function MyPage({ user }) {
 
   useEffect(() => {
     load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey]);
 
   async function load() {
     setLoading(true);

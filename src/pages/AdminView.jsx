@@ -15,10 +15,38 @@ export default function AdminView({ user }) {
   const [editingId, setEditingId] = useState(null);
   const [newSubjectName, setNewSubjectName] = useState("");
   const [status, setStatus] = useState("");
+  const [toast, setToast] = useState(null);
 
   useEffect(() => {
     loadAll();
   }, []);
+
+  // 학생이 새 질문을 올리면(매칭 실패) 새로고침 없이 미답변 목록에 반영 + 알림
+  useEffect(() => {
+    const channel = supabase
+      .channel("admin-new-questions")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "unanswered_questions" },
+        (payload) => {
+          setPending((prev) => {
+            if (prev.some((p) => p.id === payload.new.id)) return prev;
+            return [...prev, payload.new];
+          });
+          showToast(`새 질문이 도착했어요: ${payload.new.question}`);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  function showToast(message) {
+    setToast(message);
+    setTimeout(() => setToast(null), 4000);
+  }
 
   async function loadAll() {
     const [{ data: p }, { data: q }, { data: s }] = await Promise.all([
@@ -209,6 +237,7 @@ export default function AdminView({ user }) {
       </nav>
 
       {status && <div className="status-line">{status}</div>}
+      {toast && <div className="toast">{toast}</div>}
 
       {tab === "pending" && (
         <div className="pending-list">
