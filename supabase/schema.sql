@@ -1,5 +1,5 @@
 -- ⚠️ 아래 'TEACHER_EMAIL_PLACEHOLDER' 를 선생님 구글 이메일로 전부 바꾼 후 실행하세요.
--- 예: 'teacher@gmail.com'
+-- 예: 'cmcigies@gmail.com'
 
 create table if not exists qa_items (
   id uuid primary key default gen_random_uuid(),
@@ -15,6 +15,7 @@ create table if not exists unanswered_questions (
   student_email text not null,
   question text not null,
   status text not null default 'pending', -- pending | answered
+  answered_qa_item_id uuid references qa_items(id),
   created_at timestamptz default now()
 );
 
@@ -44,9 +45,13 @@ create policy "qa_items_write_teacher" on qa_items
 create policy "unanswered_insert_own" on unanswered_questions
   for insert with check (auth.jwt() ->> 'email' = student_email);
 
--- 선생님만 미답변 질문 조회/수정 가능
+-- 선생님만 미답변 질문 전체 조회/수정 가능
 create policy "unanswered_select_teacher" on unanswered_questions
   for select using (auth.jwt() ->> 'email' = 'cmcigies@gmail.com');
+
+-- 학생은 본인이 올린 미답변 질문의 상태만 조회 가능 (마이페이지용)
+create policy "unanswered_select_own" on unanswered_questions
+  for select using (auth.jwt() ->> 'email' = student_email);
 
 create policy "unanswered_update_teacher" on unanswered_questions
   for update using (auth.jwt() ->> 'email' = 'cmcigies@gmail.com');
@@ -57,3 +62,7 @@ create policy "logs_insert_own" on question_logs
 
 create policy "logs_select_teacher" on question_logs
   for select using (auth.jwt() ->> 'email' = 'cmcigies@gmail.com');
+
+-- 학생은 본인의 질문 기록만 조회 가능 (마이페이지용)
+create policy "logs_select_own" on question_logs
+  for select using (auth.jwt() ->> 'email' = student_email);

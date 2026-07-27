@@ -141,3 +141,15 @@ textarea { min-height: 72px; resize: vertical; }
 
 .muted { color: var(--muted); }
 .small { font-size: 12px; }
+
+/* ---- Student: 학생 화면 tabs (topbar 아래) ---- */
+.student-screen .tabs { padding: 12px 20px 0; max-width: 640px; margin: 0 auto; width: 100%; }
+
+/* ---- MyPage ---- */
+.mypage-empty { text-align: center; margin-top: 60px; }
+.mypage-list { display: flex; flex-direction: column; gap: 16px; }
+.mypage-card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.mypage-date { font-size: 11px; color: var(--muted); }

@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { supabase, signOut } from "../supabaseClient";
 import { matchQuestion } from "../lib/matching";
+import MyPage from "./MyPage";
 
 export default function StudentView({ user }) {
+  const [tab, setTab] = useState("ask"); // ask | mypage
   const [qaList, setQaList] = useState([]);
   const [query, setQuery] = useState("");
   const [history, setHistory] = useState([]); // {question, answer|null, pending}
@@ -80,37 +82,54 @@ export default function StudentView({ user }) {
         </div>
       </header>
 
-      <main className="chat-area">
-        {history.length === 0 && (
-          <div className="empty-state">
-            <p>영어 수업 중 궁금한 걸 편하게 물어보세요.</p>
-            <p className="muted">등록된 답변이 없으면 선생님께 바로 전달돼요.</p>
-          </div>
-        )}
-        {history.map((h, i) => (
-          <div key={i} className="qa-bubble">
-            <div className="q-line">Q. {h.question}</div>
-            {h.pending ? (
-              <div className="a-line pending">아직 등록된 답이 없어서 선생님께 전달했어요. 곧 답변해 주실 거예요!</div>
-            ) : (
-              <div className="a-line">{h.answer}</div>
-            )}
-          </div>
-        ))}
-        {loadError && <div className="error-line">Q&A 목록을 불러오지 못했어요: {loadError}</div>}
-      </main>
-
-      <form className="ask-form" onSubmit={handleAsk}>
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="궁금한 걸 입력하세요 (예: 현재완료 언제 써요?)"
-          disabled={loading}
-        />
-        <button type="submit" disabled={loading || !query.trim()}>
-          {loading ? "확인 중..." : "질문하기"}
+      <nav className="tabs">
+        <button className={tab === "ask" ? "active" : ""} onClick={() => setTab("ask")}>
+          질문하기
         </button>
-      </form>
+        <button className={tab === "mypage" ? "active" : ""} onClick={() => setTab("mypage")}>
+          마이페이지
+        </button>
+      </nav>
+
+      {tab === "mypage" ? (
+        <main className="chat-area">
+          <MyPage user={user} />
+        </main>
+      ) : (
+        <>
+          <main className="chat-area">
+            {history.length === 0 && (
+              <div className="empty-state">
+                <p>영어 수업 중 궁금한 걸 편하게 물어보세요.</p>
+                <p className="muted">등록된 답변이 없으면 선생님께 바로 전달돼요.</p>
+              </div>
+            )}
+            {history.map((h, i) => (
+              <div key={i} className="qa-bubble">
+                <div className="q-line">Q. {h.question}</div>
+                {h.pending ? (
+                  <div className="a-line pending">아직 등록된 답이 없어서 선생님께 전달했어요. 곧 답변해 주실 거예요!</div>
+                ) : (
+                  <div className="a-line">{h.answer}</div>
+                )}
+              </div>
+            ))}
+            {loadError && <div className="error-line">Q&A 목록을 불러오지 못했어요: {loadError}</div>}
+          </main>
+
+          <form className="ask-form" onSubmit={handleAsk}>
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="궁금한 걸 입력하세요 (예: 현재완료 언제 써요?)"
+              disabled={loading}
+            />
+            <button type="submit" disabled={loading || !query.trim()}>
+              {loading ? "확인 중..." : "질문하기"}
+            </button>
+          </form>
+        </>
+      )}
     </div>
   );
 }

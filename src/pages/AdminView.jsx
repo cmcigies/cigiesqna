@@ -38,17 +38,24 @@ export default function AdminView({ user }) {
       draft.keywords?.split(",").map((k) => k.trim()).filter(Boolean) ||
       suggestKeywords(pendingItem.question);
 
-    const { error: insertErr } = await supabase.from("qa_items").insert({
-      question: pendingItem.question,
-      answer,
-      keywords,
-      subject: draft.subject || "기타",
-    });
+    const { data: inserted, error: insertErr } = await supabase
+      .from("qa_items")
+      .insert({
+        question: pendingItem.question,
+        answer,
+        keywords,
+        subject: draft.subject || "기타",
+      })
+      .select()
+      .single();
     if (insertErr) {
       setStatus(`저장 실패: ${insertErr.message}`);
       return;
     }
-    await supabase.from("unanswered_questions").update({ status: "answered" }).eq("id", pendingItem.id);
+    await supabase
+      .from("unanswered_questions")
+      .update({ status: "answered", answered_qa_item_id: inserted.id })
+      .eq("id", pendingItem.id);
     setStatus("답변이 저장되고 목록에 반영됐어요.");
     loadAll();
   }
