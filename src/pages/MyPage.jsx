@@ -16,7 +16,7 @@ export default function MyPage({ user }) {
     const [{ data: logData, error: logErr }, { data: unansweredData, error: unErr }] = await Promise.all([
       supabase
         .from("question_logs")
-        .select("id, question, matched, created_at, qa_items(answer)")
+        .select("id, question, subject, matched, created_at, qa_items(answer)")
         .eq("student_email", user.email)
         .order("created_at", { ascending: false }),
       supabase
@@ -61,7 +61,9 @@ export default function MyPage({ user }) {
         return (
           <div key={log.id} className="mypage-card">
             <div className="mypage-date">{formatDate(log.created_at)}</div>
-            <div className="q-line">Q. {log.question}</div>
+            <div className="q-line">
+              {log.subject && <span className="tag subject-tag">{log.subject}</span>} Q. {log.question}
+            </div>
             {directAnswer ? (
               <div className="a-line">{directAnswer}</div>
             ) : resolvedAnswer ? (

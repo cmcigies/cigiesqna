@@ -6,46 +6,50 @@ import MyPage from "./MyPage";
 export default function StudentView({ user }) {
   const [tab, setTab] = useState("ask"); // ask | mypage
   const [qaList, setQaList] = useState([]);
+  const [subjects, setSubjects] = useState([]);
+  const [selectedSubject, setSelectedSubject] = useState("");
   const [query, setQuery] = useState("");
-  const [history, setHistory] = useState([]); // {question, answer|null, pending}
+  const [history, setHistory] = useState([]); // {question, answer|null, pending, subject}
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(null);
 
   useEffect(() => {
-    loadQaList();
+    loadInitialData();
   }, []);
 
-  async function loadQaList() {
-    const { data, error } = await supabase
-      .from("qa_items")
-      .select("id, question, answer, keywords, subject");
-    if (error) {
-      setLoadError(error.message);
-      return;
-    }
-    setQaList(data || []);
+  async function loadInitialData() {
+    const [{ data: qaData, error: qaErr }, { data: subjectData, error: subjectErr }] = await Promise.all([
+      supabase.from("qa_items").select("id, question, answer, keywords, subject"),
+      supabase.from("subjects").select("id, name").order("name", { ascending: true }),
+    ]);
+    if (qaErr) setLoadError(qaErr.message);
+    else if (subjectErr) setLoadError(subjectErr.message);
+    setQaList(qaData || []);
+    setSubjects(subjectData || []);
   }
 
   async function handleAsk(e) {
     e.preventDefault();
     const q = query.trim();
-    if (!q || loading) return;
+    if (!q || !selectedSubject || loading) return;
     setLoading(true);
     setQuery("");
 
-    const { item, score } = matchQuestion(q, qaList);
+    const scopedList = qaList.filter((item) => item.subject === selectedSubject);
+    const { item } = matchQuestion(q, scopedList);
     const matched = !!item;
 
     // 로그 기록 (실패해도 학생 화면 흐름은 막지 않음)
     await supabase.from("question_logs").insert({
       student_email: user.email,
       question: q,
+      subject: selectedSubject,
       matched,
       qa_item_id: item?.id || null,
     });
 
     if (matched) {
-      setHistory((h) => [...h, { question: q, answer: item.answer, pending: false }]);
+      setHistory((h) => [...h, { question: q, subject: selectedSubject, answer: item.answer, pending: false }]);
       setLoading(false);
       return;
     }
@@ -54,6 +58,7 @@ export default function StudentView({ user }) {
     await supabase.from("unanswered_questions").insert({
       student_email: user.email,
       question: q,
+      subject: selectedSubject,
       status: "pending",
     });
 
@@ -61,14 +66,14 @@ export default function StudentView({ user }) {
       await fetch("/api/notify-teacher", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: q, studentEmail: user.email }),
+        body: JSON.stringify({ question: q, studentEmail: user.email, subject: selectedSubject }),
       });
     } catch (err) {
       // 이메일 실패해도 미답변 큐에는 이미 저장되어 있으니 조용히 넘어감
       console.error("이메일 알림 실패:", err);
     }
 
-    setHistory((h) => [...h, { question: q, answer: null, pending: true }]);
+    setHistory((h) => [...h, { question: q, subject: selectedSubject, answer: null, pending: true }]);
     setLoading(false);
   }
 
@@ -101,12 +106,14 @@ export default function StudentView({ user }) {
             {history.length === 0 && (
               <div className="empty-state">
                 <p>영어 수업 중 궁금한 걸 편하게 물어보세요.</p>
-                <p className="muted">등록된 답변이 없으면 선생님께 바로 전달돼요.</p>
+                <p className="muted">과목을 먼저 선택한 뒤 질문할 수 있어요.</p>
               </div>
             )}
             {history.map((h, i) => (
               <div key={i} className="qa-bubble">
-                <div className="q-line">Q. {h.question}</div>
+                <div className="q-line">
+                  {h.subject && <span className="tag subject-tag">{h.subject}</span>} Q. {h.question}
+                </div>
                 {h.pending ? (
                   <div className="a-line pending">아직 등록된 답이 없어서 선생님께 전달했어요. 곧 답변해 주실 거예요!</div>
                 ) : (
@@ -114,17 +121,28 @@ export default function StudentView({ user }) {
                 )}
               </div>
             ))}
-            {loadError && <div className="error-line">Q&A 목록을 불러오지 못했어요: {loadError}</div>}
+            {loadError && <div className="error-line">데이터를 불러오지 못했어요: {loadError}</div>}
           </main>
 
-          <form className="ask-form" onSubmit={handleAsk}>
+          <form className="ask-form subject-required" onSubmit={handleAsk}>
+            <select
+              value={selectedSubject}
+              onChange={(e) => setSelectedSubject(e.target.value)}
+              disabled={loading}
+              className="subject-select"
+            >
+              <option value="" disabled>과목 선택</option>
+              {subjects.map((s) => (
+                <option key={s.id} value={s.name}>{s.name}</option>
+              ))}
+            </select>
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="궁금한 걸 입력하세요 (예: 현재완료 언제 써요?)"
-              disabled={loading}
+              placeholder={selectedSubject ? "궁금한 걸 입력하세요" : "먼저 과목을 선택하세요"}
+              disabled={loading || !selectedSubject}
             />
-            <button type="submit" disabled={loading || !query.trim()}>
+            <button type="submit" disabled={loading || !query.trim() || !selectedSubject}>
               {loading ? "확인 중..." : "질문하기"}
             </button>
           </form>

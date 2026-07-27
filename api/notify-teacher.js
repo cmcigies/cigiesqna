@@ -7,7 +7,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "POST만 허용됩니다." });
   }
 
-  const { question, studentEmail } = req.body || {};
+  const { question, studentEmail, subject } = req.body || {};
   if (!question) {
     return res.status(400).json({ error: "question이 필요합니다." });
   }
@@ -19,6 +19,7 @@ export default async function handler(req, res) {
       subject: "새로운 미답변 질문이 있어요",
       html: `
         <p><strong>학생:</strong> ${escapeHtml(studentEmail || "알 수 없음")}</p>
+        ${subject ? `<p><strong>과목:</strong> ${escapeHtml(subject)}</p>` : ""}
         <p><strong>질문:</strong> ${escapeHtml(question)}</p>
         <p><a href="${process.env.APP_URL || ""}">관리자 페이지에서 답변하기</a></p>
       `,
