@@ -92,7 +92,23 @@ export default function AdminView({ user }) {
 
   async function deleteQaItem(id) {
     if (!confirm("이 Q&A를 삭제할까요?")) return;
-    await supabase.from("qa_items").delete().eq("id", id);
+    const { error } = await supabase.from("qa_items").delete().eq("id", id);
+    if (error) {
+      setStatus(`삭제 실패: ${error.message}`);
+      return;
+    }
+    setStatus("삭제됐어요.");
+    loadAll();
+  }
+
+  async function deletePendingItem(id) {
+    if (!confirm("이 질문을 목록에서 삭제할까요? (답변하지 않고 삭제)")) return;
+    const { error } = await supabase.from("unanswered_questions").delete().eq("id", id);
+    if (error) {
+      setStatus(`삭제 실패: ${error.message}`);
+      return;
+    }
+    setStatus("삭제됐어요.");
     loadAll();
   }
 
@@ -161,7 +177,12 @@ export default function AdminView({ user }) {
       return;
     }
     if (!confirm(`"${name}" 과목을 삭제할까요? 이 과목으로 등록된 Q&A는 "${FALLBACK_SUBJECT}"로 남아있어요.`)) return;
-    await supabase.from("subjects").delete().eq("id", id);
+    const { error } = await supabase.from("subjects").delete().eq("id", id);
+    if (error) {
+      setStatus(`과목 삭제 실패: ${error.message}`);
+      return;
+    }
+    setStatus("과목이 삭제됐어요.");
     loadAll();
   }
 
@@ -198,6 +219,7 @@ export default function AdminView({ user }) {
                 <strong>{p.question}</strong>
                 <span className="muted small"> · {p.student_email}</span>
                 {p.subject && <span className="tag muted"> {p.subject}</span>}
+                <button className="link-btn danger pending-delete" onClick={() => deletePendingItem(p.id)}>삭제</button>
               </div>
               <textarea
                 placeholder="답변을 입력하세요"
