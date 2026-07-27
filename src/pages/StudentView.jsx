@@ -149,8 +149,12 @@ export default function StudentView({ user }) {
           <main className="chat-area">
             {history.length === 0 && (
               <div className="empty-state">
-                <p>영어 수업 중 궁금한 걸 편하게 물어보세요.</p>
-                <p className="muted">과목을 먼저 선택한 뒤 질문할 수 있어요.</p>
+                <p>질문을 할때 카테고리를 선택하고 작성해주세요.</p>
+                <p>빠른시일 안으로 답변드리도록 하겠습니다.</p>
+                <p>카테고리외의 질문은 기타로 받으나</p>
+                <p>수업내용과 관련없는 질문에 대해서는</p>
+                <p>사전통보없이 삭제됨을 알려드립니다.</p>
+                <p>감사합니다.</p>
               </div>
             )}
             {history.map((h, i) => (
